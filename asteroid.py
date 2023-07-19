@@ -24,8 +24,8 @@ async def print_stats():
         print(f"Speed: {speed}")
         print(f"Checking item: {item_id}")
         print(f"Checks: {checks}")
-        await asyncio.sleep(1)
-
+        await asyncio.sleep(2)
+        
 async def buy_item(session, limitinfo) -> None:
     try:
         data = {
@@ -36,23 +36,20 @@ async def buy_item(session, limitinfo) -> None:
             "expectedPurchaserType": "User",
             "expectedSellerId": int(limitinfo.get("Creator")["CreatorTargetId"]),
             "expectedSellerType": "User",
-            "idempotencyKey": "random uuid4 string that will be your key or smthn",
+            "idempotencyKey": str(uuid.uuid4()),
             "collectibleProductId": limitinfo.get('CollectibleProductId')
         }
 
-        async with aiohttp.ClientSession() as client:                 
-            data["idempotencyKey"] = str(uuid.uuid4())
-            response = await client.post(f"https://apis.roblox.com/marketplace-sales/v1/item/{limitinfo.get('CollectibleItemId')}/purchase-item",
+        async with session.post(f"https://apis.roblox.com/marketplace-sales/v1/item/{limitinfo.get('CollectibleItemId')}/purchase-item",
                            json=data,
                            headers={"x-csrf-token": check_xcsrf},
-                           cookies={".ROBLOSECURITY": check_cookie})
-
+                           cookies={".ROBLOSECURITY": check_cookie}) as res:
 
             try:
-                  json_response = await response.json()
+                  json_response = await res.json()
             except aiohttp.ContentTypeError as e:
                   print("Error trying to decode JSON")
-            print(response)
+            print(res)
             print("------------------")
             print(json_response["errorMessage"])
             print("------------------")
@@ -93,19 +90,22 @@ async def _id_check(session, item_id):
     t0 = asyncio.get_event_loop().time()
     url = f"https://economy.roblox.com/v2/assets/{item_id}/details"
 
-    async with session.get(url,
-                            headers={"x-csrf-token": check_xcsrf,
-                                    'Accept': "application/json",
-                                    'Accept-Encoding': 'gzip, deflate'},
-                            cookies={".ROBLOSECURITY": check_cookie}, ssl=False) as res:
+    async with session.get(
+        url,
+        headers={"x-csrf-token": check_xcsrf, 'Accept': "application/json", 'Accept-Encoding': 'gzip, deflate'},
+        cookies={".ROBLOSECURITY": check_cookie},
+        ssl=False
+    ) as res:
         response_text = await res.text()
         data = json.loads(response_text)
-        if data.get("IsForSale") and data.get('CollectibleProductId') is not None:
+        if data.get("IsForSale") and data.get('CollectibleProductId') is not None and data.get('Remaining') > 0:
             for i in range(4):
-                async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=None)) as session:
-                    await buy_item(session, data)
+                await buy_item(session, data)
 
-            exit()
+        elif data.get('Remaining') == 0:
+            config['item'].remove(item_id)
+            with open("config.json", "w") as file:
+                json.dump(config, file, indent=1)
 
     speed = round(asyncio.get_event_loop().time() - t0, 2)
     checks += 1
