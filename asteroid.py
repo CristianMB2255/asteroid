@@ -1,32 +1,32 @@
-async def _update_xcsrf(check_cookie):
-    async with aiohttp.ClientSession(cookies={".ROBLOSECURITY": check_cookie}) as client:
-        res = await client.post("https://accountsettings.roblox.com/v1/email", ssl=False)
-        check_xcsrf = res.headers.get("x-csrf-token")
-        if check_xcsrf is None:
-            print("invalid cookie")
-            exit()
-        return check_xcsrf
+import asyncio
+import httpx
+import json
+import time
+import uuid
+import aiohttp
+import os
+import socketio
 
+try:
+    with open('config.json', 'r') as f:
+        config = json.load(f)
+except:
+    exit("error trying to open config")
 
-async def get_user_id(check_cookie):
-    async with aiohttp.ClientSession(cookies={".ROBLOSECURITY": check_cookie}) as client:
-        res = await client.get("https://users.roblox.com/v1/users/authenticated", ssl=False)
-        data = await res.json()
-        userid = data.get('id')
-        if userid is None:
-            print("Couldn't scrape user id. Error:", data)
-            exit()
-        return str(userid)
+check_cookie = config["acc"]
+item_id = config["item"]
+speed = 0
+checks = 0
 
-async def print_stats(speed, item_id, checks):
+async def print_stats():
     while True:
         os.system('cls')
         print(f"Speed: {speed}")
         print(f"Checking item: {item_id}")
         print(f"Checks: {checks}")
         await asyncio.sleep(1)
-        
-async def buy_item(check_cookie, check_xcsrf, limitinfo, userid):
+
+async def buy_item(session, limitinfo) -> None:
     try:
         data = {
             "collectibleItemId": limitinfo.get('CollectibleItemId'),
@@ -36,22 +36,22 @@ async def buy_item(check_cookie, check_xcsrf, limitinfo, userid):
             "expectedPurchaserType": "User",
             "expectedSellerId": int(limitinfo.get("Creator")["CreatorTargetId"]),
             "expectedSellerType": "User",
-            "idempotencyKey": str(uuid.uuid4()),
+            "idempotencyKey": "random uuid4 string that will be your key or smthn",
             "collectibleProductId": limitinfo.get('CollectibleProductId')
         }
 
         async with aiohttp.ClientSession() as client:                 
+            data["idempotencyKey"] = str(uuid.uuid4())
             response = await client.post(f"https://apis.roblox.com/marketplace-sales/v1/item/{limitinfo.get('CollectibleItemId')}/purchase-item",
-                                         json=data,
-                                         headers={"x-csrf-token": check_xcsrf},
-                                         cookies={".ROBLOSECURITY": check_cookie})
+                           json=data,
+                           headers={"x-csrf-token": check_xcsrf},
+                           cookies={".ROBLOSECURITY": check_cookie})
+
 
             try:
-                json_response = await response.json()
+                  json_response = await response.json()
             except aiohttp.ContentTypeError as e:
-                print("Error trying to decode JSON")
-                print(e)
-
+                  print("Error trying to decode JSON")
             print(response)
             print("------------------")
             print(json_response["errorMessage"])
@@ -59,8 +59,36 @@ async def buy_item(check_cookie, check_xcsrf, limitinfo, userid):
     except:
         print("General Error")
         print("------------------")
-        
-async def _id_check(session, check_xcsrf, check_cookie, item_id, checks, speed):
+
+async def get_xcsrf(cookieD) -> str:
+    async with aiohttp.ClientSession(cookies={".ROBLOSECURITY": cookieD}) as client:
+        res = await client.post("https://accountsettings.roblox.com/v1/email", ssl=False)
+        xcsrf_token = res.headers.get("x-csrf-token")
+        if xcsrf_token is None:
+            print("invalid cookie")
+            exit(1)
+        return xcsrf_token
+
+async def _update_xcsrf():
+    global check_xcsrf
+    try:
+        check_xcsrf = await get_xcsrf(check_cookie)
+        return True
+    except:
+        return False
+
+async def get_user_id():
+    global userid
+    async with aiohttp.ClientSession(cookies={".ROBLOSECURITY": check_cookie}) as client:
+        res = await client.get("https://users.roblox.com/v1/users/authenticated", ssl=False)
+        data = await res.json()
+        userid = data.get('id')
+        if userid is None:
+            print("Couldn't scrape user id. Error:", data)
+            exit(1)
+        return userid
+
+async def _id_check(session, item_id):
     global speed, checks
     t0 = asyncio.get_event_loop().time()
     url = f"https://economy.roblox.com/v2/assets/{item_id}/details"
@@ -81,32 +109,20 @@ async def _id_check(session, check_xcsrf, check_cookie, item_id, checks, speed):
 
     speed = round(asyncio.get_event_loop().time() - t0, 2)
     checks += 1
-            
-async def items_snipe(check_cookie, check_xcsrf, item_ids, userid):
+
+async def items_snipe(item_id) -> None:
     async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=None)) as session:
-        for item_id in item_ids:
-            await _id_check(session, check_xcsrf, check_cookie, item_id, checks, speed)
+        while 1:
+            if len(item_id) > 0:
+                    for ids in item_id:
+                        await _id_check(session, int(ids))
 
-async def start(check_cookie, check_xcsrf, item_ids, userid, speed, checks):
+async def start():
     await asyncio.gather(
-        items_snipe(check_cookie, check_xcsrf, item_ids, userid),
-        print_stats(speed, item_ids, checks)
-    )
-    
-async def main():
-    try:
-        with open('config.json', 'r') as f:
-            config = json.load(f)
-    except:
-        exit("Error trying to open config")
+        items_snipe(item_id),
+        print_stats()
+        )
 
-    check_cookie = config["acc"]
-    item_ids = config["item"]
-    speed = 0
-    checks = 0
-
-    check_xcsrf = await _update_xcsrf(check_cookie)
-    userid = await get_user_id(check_cookie)
-    await start(check_cookie, check_xcsrf, item_ids, userid, speed, checks)
-
-asyncio.run(main())
+asyncio.run(_update_xcsrf())
+asyncio.run(get_user_id())
+asyncio.run(start())
