@@ -87,10 +87,10 @@ async def items_snipe(check_cookie, check_xcsrf, item_ids, userid):
         for item_id in item_ids:
             await _id_check(session, check_xcsrf, check_cookie, item_id)
 
-async def start(check_cookie, check_xcsrf, item_ids, userid):
+async def start(check_cookie, check_xcsrf, item_ids, userid, speed, checks):
     await asyncio.gather(
         items_snipe(check_cookie, check_xcsrf, item_ids, userid),
-        print_stats(0, item_ids, 0)
+        print_stats(speed, item_ids, checks)
     )
     
 async def main():
@@ -102,9 +102,11 @@ async def main():
 
     check_cookie = config["acc"]
     item_ids = config["item"]
+    speed = 0
+    checks = 0
 
     check_xcsrf = await _update_xcsrf(check_cookie)
     userid = await get_user_id(check_cookie)
-    await start(check_cookie, check_xcsrf, item_ids, userid)
+    await start(check_cookie, check_xcsrf, item_ids, userid, speed, checks)
 
 asyncio.run(main())
