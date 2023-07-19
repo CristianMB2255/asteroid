@@ -1,12 +1,3 @@
-import asyncio
-import httpx
-import json
-import time
-import uuid
-import aiohttp
-import os
-import socketio
-
 try:
     with open('config.json', 'r') as f:
         config = json.load(f)
@@ -25,37 +16,6 @@ async def print_stats():
         print(f"Checking item: {item_id}")
         print(f"Checks: {checks}")
         await asyncio.sleep(2)
-        
-async def buy_item(session, limitinfo) -> None:
-    try:
-        data = {
-            "collectibleItemId": limitinfo.get('CollectibleItemId'),
-            "expectedCurrency": 1,
-            "expectedPrice": limitinfo.get('PriceInRobux'),
-            "expectedPurchaserId": int(userid),
-            "expectedPurchaserType": "User",
-            "expectedSellerId": int(limitinfo.get("Creator")["CreatorTargetId"]),
-            "expectedSellerType": "User",
-            "idempotencyKey": str(uuid.uuid4()),
-            "collectibleProductId": limitinfo.get('CollectibleProductId')
-        }
-
-        async with session.post(f"https://apis.roblox.com/marketplace-sales/v1/item/{limitinfo.get('CollectibleItemId')}/purchase-item",
-                           json=data,
-                           headers={"x-csrf-token": check_xcsrf},
-                           cookies={".ROBLOSECURITY": check_cookie}) as res:
-
-            try:
-                  json_response = await res.json()
-            except aiohttp.ContentTypeError as e:
-                  print("Error trying to decode JSON")
-            print(res)
-            print("------------------")
-            print(json_response["errorMessage"])
-            print("------------------")
-    except:
-        print("General Error")
-        print("------------------")
 
 async def get_xcsrf(cookieD) -> str:
     async with aiohttp.ClientSession(cookies={".ROBLOSECURITY": cookieD}) as client:
@@ -85,6 +45,36 @@ async def get_user_id():
             exit(1)
         return userid
 
+async def buy_item(session, limitinfo) -> None:
+    try:
+        data = {
+            "collectibleItemId": limitinfo.get('CollectibleItemId'),
+            "expectedCurrency": 1,
+            "expectedPrice": limitinfo.get('PriceInRobux'),
+            "expectedPurchaserId": int(userid),
+            "expectedPurchaserType": "User",
+            "expectedSellerId": int(limitinfo.get("Creator")["CreatorTargetId"]),
+            "expectedSellerType": "User",
+            "idempotencyKey": str(uuid.uuid4()),
+            "collectibleProductId": limitinfo.get('CollectibleProductId')
+        }
+
+        async with session.post(f"https://apis.roblox.com/marketplace-sales/v1/item/{limitinfo.get('CollectibleItemId')}/purchase-item",
+                           json=data,
+                           headers={"x-csrf-token": check_xcsrf},
+                           cookies={".ROBLOSECURITY": check_cookie}) as res:
+
+            try:
+                  json_response = await res.json()
+            except aiohttp.ContentTypeError as e:
+                  print("Error trying to decode JSON")
+            print("------------------")
+            print(json_response["errorMessage"])
+            print("------------------")
+    except:
+        print("General Error")
+        print("------------------")
+        
 async def _id_check(session, item_id):
     global speed, checks
     t0 = asyncio.get_event_loop().time()
@@ -107,7 +97,7 @@ async def _id_check(session, item_id):
             with open("config.json", "w") as file:
                 json.dump(config, file, indent=1)
 
-    speed = round(asyncio.get_event_loop().time() - t0, 2)
+    speed = round(asyncio.get_event_loop().time() - t0, 3)
     checks += 1
 
 async def items_snipe(item_id) -> None:
