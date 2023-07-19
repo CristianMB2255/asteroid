@@ -60,7 +60,7 @@ async def buy_item(check_cookie, check_xcsrf, limitinfo, userid):
         print("General Error")
         print("------------------")
         
-async def _id_check(session, check_xcsrf, check_cookie, item_id):
+async def _id_check(session, check_xcsrf, check_cookie, item_id, checks, speed):
     global speed, checks
     t0 = asyncio.get_event_loop().time()
     url = f"https://economy.roblox.com/v2/assets/{item_id}/details"
@@ -85,7 +85,7 @@ async def _id_check(session, check_xcsrf, check_cookie, item_id):
 async def items_snipe(check_cookie, check_xcsrf, item_ids, userid):
     async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=None)) as session:
         for item_id in item_ids:
-            await _id_check(session, check_xcsrf, check_cookie, item_id)
+            await _id_check(session, check_xcsrf, check_cookie, item_id, checks, speed)
 
 async def start(check_cookie, check_xcsrf, item_ids, userid, speed, checks):
     await asyncio.gather(
