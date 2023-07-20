@@ -105,7 +105,6 @@ async def start():
         items_snipe(item_ids),
         print_stats()
         )
-
 asyncio.run(get_xcsrf(check_cookie))
 asyncio.run(get_user_id(check_cookie))
 asyncio.run(start())
