@@ -16,6 +16,7 @@ async def print_stats():
         print(f"Speed: {speed}")
         print(f"Checking item: {item_ids}")
         print(f"Checks: {checks}")
+        print(f"Bought: {bought}")
         await asyncio.sleep(1)
 
 async def get_xcsrf(cookie) -> str:
