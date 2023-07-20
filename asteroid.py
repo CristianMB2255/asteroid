@@ -13,7 +13,7 @@ async def print_stats():
     while True:
         os.system('cls')
         print(f"Speed: {speed}")
-        print(f"Checking item: {item_id}")
+        print(f"Checking item: {item_ids}")
         print(f"Checks: {checks}")
         await asyncio.sleep(1)
 
