@@ -107,8 +107,8 @@ async def items_snipe(item_id) -> None:
 
 async def start():
     await asyncio.gather(
-        items_snipe(item_ids),
-        print_stats()
+        print_stats(),
+        items_snipe(item_ids)
         )
 asyncio.run(get_xcsrf(check_cookie))
 asyncio.run(get_user_id(check_cookie))
