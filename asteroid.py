@@ -27,7 +27,7 @@ async def get_xcsrf(cookie) -> str:
             exit(1)
         return check_xcsrf
 
-async def get_user_id(cookie):
+async def get_user_id(cookie) -> str:
     global userid
     async with aiohttp.ClientSession(cookies={".ROBLOSECURITY": cookie}) as client:
         res = await client.get("https://users.roblox.com/v1/users/authenticated", ssl=False)
