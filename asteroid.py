@@ -5,7 +5,7 @@ except:
     exit("error trying to open config")
 
 check_cookie = config["acc"]
-item_id = config["item"]
+item_ids = config["item"]
 speed = 0
 checks = 0
 
@@ -15,28 +15,21 @@ async def print_stats():
         print(f"Speed: {speed}")
         print(f"Checking item: {item_id}")
         print(f"Checks: {checks}")
-        await asyncio.sleep(2)
+        await asyncio.sleep(1)
 
-async def get_xcsrf(cookieD) -> str:
-    async with aiohttp.ClientSession(cookies={".ROBLOSECURITY": cookieD}) as client:
-        res = await client.post("https://accountsettings.roblox.com/v1/email", ssl=False)
-        xcsrf_token = res.headers.get("x-csrf-token")
-        if xcsrf_token is None:
-            print("invalid cookie")
-            exit(1)
-        return xcsrf_token
-
-async def _update_xcsrf():
+async def get_xcsrf(cookie) -> str:
     global check_xcsrf
-    try:
-        check_xcsrf = await get_xcsrf(check_cookie)
-        return True
-    except:
-        return False
+    async with aiohttp.ClientSession(cookies={".ROBLOSECURITY": cookie}) as client:
+        res = await client.post("https://accountsettings.roblox.com/v1/email", ssl=False)
+        check_xcsrf = res.headers.get("x-csrf-token")
+        if check_xcsrf is None:
+            print("Invalid cookie")
+            exit(1)
+        return check_xcsrf
 
-async def get_user_id():
+async def get_user_id(cookie):
     global userid
-    async with aiohttp.ClientSession(cookies={".ROBLOSECURITY": check_cookie}) as client:
+    async with aiohttp.ClientSession(cookies={".ROBLOSECURITY": cookie}) as client:
         res = await client.get("https://users.roblox.com/v1/users/authenticated", ssl=False)
         data = await res.json()
         userid = data.get('id')
@@ -47,18 +40,6 @@ async def get_user_id():
 
 async def buy_item(session, limitinfo) -> None:
     try:
-        data = {
-            "collectibleItemId": limitinfo.get('CollectibleItemId'),
-            "expectedCurrency": 1,
-            "expectedPrice": limitinfo.get('PriceInRobux'),
-            "expectedPurchaserId": int(userid),
-            "expectedPurchaserType": "User",
-            "expectedSellerId": int(limitinfo.get("Creator")["CreatorTargetId"]),
-            "expectedSellerType": "User",
-            "idempotencyKey": str(uuid.uuid4()),
-            "collectibleProductId": limitinfo.get('CollectibleProductId')
-        }
-
         async with session.post(f"https://apis.roblox.com/marketplace-sales/v1/item/{limitinfo.get('CollectibleItemId')}/purchase-item",
                            json=data,
                            headers={"x-csrf-token": check_xcsrf},
@@ -87,8 +68,20 @@ async def _id_check(session, item_id):
         ssl=False
     ) as res:
         response_text = await res.text()
-        data = json.loads(response_text)
-        if data.get("IsForSale") and data.get('CollectibleProductId') is not None and data.get('Remaining') > 0:
+        item_stats = json.loads(response_text)
+        if item_stats.get("IsForSale") and item_stats.get('CollectibleProductId') is not None and item_stats.get('Remaining') > 0:
+            data = {
+            "collectibleItemId": item_stats.get('CollectibleItemId'),
+            "expectedCurrency": 1,
+            "expectedPrice": item_stats.get('PriceInRobux'),
+            "expectedPurchaserId": int(userid),
+            "expectedPurchaserType": "User",
+            "expectedSellerId": int(item_stats.get("Creator")["CreatorTargetId"]),
+            "expectedSellerType": "User",
+            "idempotencyKey": str(uuid.uuid4()),
+            "collectibleProductId": item_stats.get('CollectibleProductId')
+            }
+            
             for i in range(4):
                 await buy_item(session, data)
 
@@ -103,16 +96,16 @@ async def _id_check(session, item_id):
 async def items_snipe(item_id) -> None:
     async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=None)) as session:
         while 1:
-            if len(item_id) > 0:
-                    for ids in item_id:
+            if len(item_ids) > 0:
+                    for ids in item_ids:
                         await _id_check(session, int(ids))
 
 async def start():
     await asyncio.gather(
-        items_snipe(item_id),
+        items_snipe(item_ids),
         print_stats()
         )
 
-asyncio.run(_update_xcsrf())
+asyncio.run(get_xcsrf(check_cookie))
 asyncio.run(get_user_id())
 asyncio.run(start())
