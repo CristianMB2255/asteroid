@@ -107,5 +107,5 @@ async def start():
         )
 
 asyncio.run(get_xcsrf(check_cookie))
-asyncio.run(get_user_id())
+asyncio.run(get_user_id(check_cookie))
 asyncio.run(start())
