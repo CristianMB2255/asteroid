@@ -85,7 +85,7 @@ async def _id_check(session, item_id):
             for i in range(4):
                 await buy_item(session, data)
 
-        elif data.get('Remaining') == 0:
+        elif item_stats.get('Remaining') == 0:
             config['item'].remove(item_id)
             with open("config.json", "w") as file:
                 json.dump(config, file, indent=1)
