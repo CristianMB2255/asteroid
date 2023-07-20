@@ -8,6 +8,7 @@ check_cookie = config["acc"]
 item_ids = config["item"]
 speed = 0
 checks = 0
+bought = 0
 
 async def print_stats():
     while True:
@@ -38,9 +39,10 @@ async def get_user_id(cookie) -> str:
             exit(1)
         return userid
 
-async def buy_item(session, limitinfo) -> None:
+async def buy_item(session, data) -> None:   
+    global bought
     try:
-        async with session.post(f"https://apis.roblox.com/marketplace-sales/v1/item/{limitinfo.get('CollectibleItemId')}/purchase-item",
+        async with session.post(f"https://apis.roblox.com/marketplace-sales/v1/item/{data['collectibleItemId']}/purchase-item",
                            json=data,
                            headers={"x-csrf-token": check_xcsrf},
                            cookies={".ROBLOSECURITY": check_cookie}) as res:
@@ -52,6 +54,8 @@ async def buy_item(session, limitinfo) -> None:
             print("------------------")
             print(json_response["errorMessage"])
             print("------------------")
+            if(json_response["purchased"] == True):
+                bought += 1
     except:
         print("General Error")
         print("------------------")
