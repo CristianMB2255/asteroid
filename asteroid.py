@@ -89,6 +89,7 @@ async def _id_check(session, item_id):
             
             for i in range(4):
                 await buy_item(session, data)
+                time.await(0.5)
 
         elif item_stats.get('Remaining') == 0:
             config['item'].remove(item_id)
